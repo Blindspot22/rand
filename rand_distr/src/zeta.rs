@@ -36,9 +36,20 @@ use rand::{distr::OpenClosed01, Rng};
 /// use rand::prelude::*;
 /// use rand_distr::Zeta;
 ///
-/// let val: f64 = thread_rng().sample(Zeta::new(1.5).unwrap());
+/// let val: f64 = rand::rng().sample(Zeta::new(1.5).unwrap());
 /// println!("{}", val);
 /// ```
+///
+/// # Integer vs FP return type
+///
+/// This implementation uses floating-point (FP) logic internally, which can
+/// potentially generate very large samples (exceeding e.g. `u64::MAX`).
+///
+/// It is *safe* to cast such results to an integer type using `as`
+/// (e.g. `distr.sample(&mut rng) as u64`), since such casts are saturating
+/// (e.g. `2f64.powi(64) as u64 == u64::MAX`). It is up to the user to
+/// determine whether this potential loss of accuracy is acceptable
+/// (this determination may depend on the distribution's parameters).
 ///
 /// # Notes
 ///

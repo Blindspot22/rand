@@ -9,7 +9,6 @@
 //! `IteratorRandom`
 
 use super::coin_flipper::CoinFlipper;
-use super::gen_index;
 #[allow(unused)]
 use super::IndexedRandom;
 use crate::Rng;
@@ -25,10 +24,8 @@ use alloc::vec::Vec;
 /// ```
 /// use rand::seq::IteratorRandom;
 ///
-/// let mut rng = rand::thread_rng();
-///
 /// let faces = "😀😎😐😕😠😢";
-/// println!("I am {}!", faces.chars().choose(&mut rng).unwrap());
+/// println!("I am {}!", faces.chars().choose(&mut rand::rng()).unwrap());
 /// ```
 /// Example output (non-deterministic):
 /// ```none
@@ -57,6 +54,15 @@ pub trait IteratorRandom: Iterator + Sized {
     /// Consider instead using [`IteratorRandom::choose_stable`] to avoid
     /// [`Iterator`] combinators which only change size hints from affecting the
     /// results.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rand::seq::IteratorRandom;
+    ///
+    /// let words = "Mary had a little lamb".split(' ');
+    /// println!("{}", words.choose(&mut rand::rng()).unwrap());
+    /// ```
     fn choose<R>(mut self, rng: &mut R) -> Option<Self::Item>
     where
         R: Rng + ?Sized,
@@ -71,7 +77,7 @@ pub trait IteratorRandom: Iterator + Sized {
             return match lower {
                 0 => None,
                 1 => self.next(),
-                _ => self.nth(gen_index(rng, lower)),
+                _ => self.nth(rng.random_range(..lower)),
             };
         }
 
@@ -81,7 +87,7 @@ pub trait IteratorRandom: Iterator + Sized {
         // Continue until the iterator is exhausted
         loop {
             if lower > 1 {
-                let ix = gen_index(coin_flipper.rng, lower + consumed);
+                let ix = coin_flipper.rng.random_range(..lower + consumed);
                 let skip = if ix < lower {
                     result = self.nth(ix);
                     lower - (ix + 1)
@@ -101,7 +107,7 @@ pub trait IteratorRandom: Iterator + Sized {
                     return result;
                 }
                 consumed += 1;
-                if coin_flipper.gen_ratio_one_over(consumed) {
+                if coin_flipper.random_ratio_one_over(consumed) {
                     result = elem;
                 }
             }
@@ -146,7 +152,7 @@ pub trait IteratorRandom: Iterator + Sized {
             let (lower, _) = self.size_hint();
             if lower >= 2 {
                 let highest_selected = (0..lower)
-                    .filter(|ix| coin_flipper.gen_ratio_one_over(consumed + ix + 1))
+                    .filter(|ix| coin_flipper.random_ratio_one_over(consumed + ix + 1))
                     .last();
 
                 consumed += lower;
@@ -164,7 +170,7 @@ pub trait IteratorRandom: Iterator + Sized {
                 return result;
             }
 
-            if coin_flipper.gen_ratio_one_over(consumed + 1) {
+            if coin_flipper.random_ratio_one_over(consumed + 1) {
                 result = elem;
             }
             consumed += 1;
@@ -204,7 +210,7 @@ pub trait IteratorRandom: Iterator + Sized {
 
         // Continue, since the iterator was not exhausted
         for (i, elem) in self.enumerate() {
-            let k = gen_index(rng, i + 1 + amount);
+            let k = rng.random_range(..i + 1 + amount);
             if let Some(slot) = buf.get_mut(k) {
                 *slot = elem;
             }
@@ -240,7 +246,7 @@ pub trait IteratorRandom: Iterator + Sized {
         // If the iterator stops once, then so do we.
         if reservoir.len() == amount {
             for (i, elem) in self.enumerate() {
-                let k = gen_index(rng, i + 1 + amount);
+                let k = rng.random_range(..i + 1 + amount);
                 if let Some(slot) = reservoir.get_mut(k) {
                     *slot = elem;
                 }
